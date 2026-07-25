@@ -38,8 +38,8 @@
 @layer components {
   .container-x {
     /* Контент тянется почти на всю ширину, как в оригиналах Tilda
-       (на 1440px блок = окно − ~64px), с разумным потолком на ультраширах. */
-    @apply mx-auto w-full max-w-[1720px] px-5 sm:px-6 lg:px-8;
+       (на 1440px блок = окно − ~64px; на 1920 — near-full-width). */
+    @apply mx-auto w-full max-w-[1920px] px-5 sm:px-6 lg:px-8;
   }
 
   /* Кнопки — цвета через CSS-переменные темы */
