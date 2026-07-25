@@ -25,7 +25,7 @@ export function Hero({ data }: { data: LandingData }) {
 
   return (
     <section id="top" className="py-8 md:py-12 lg:py-16" aria-label={data.name}>
-      <div className="container-x grid items-start gap-8 lg:grid-cols-[857fr_958fr] lg:gap-8">
+      <div className="container-x grid items-start gap-8 lg:grid-cols-[857fr_958fr] lg:items-stretch lg:gap-8">
         {/* Оффер */}
         <div className="order-2 lg:order-1">
           <motion.p
@@ -122,8 +122,9 @@ export function Hero({ data }: { data: LandingData }) {
           </div>
         </div>
 
-        {/* Визуализация */}
-        <div className="relative order-1 overflow-hidden rounded-lg bg-soft lg:order-2" style={{ aspectRatio: '958 / 779' }}>
+        {/* Визуализация: на мобиле фикс-пропорция, на десктопе тянется на всю
+            высоту левой колонки (до бонусов), как в оригинале */}
+        <div className="relative order-1 aspect-[958/779] min-h-[300px] overflow-hidden rounded-lg bg-soft lg:order-2 lg:aspect-auto lg:h-full">
           {content.images.map((src, i) => (
             <div
               key={src}
