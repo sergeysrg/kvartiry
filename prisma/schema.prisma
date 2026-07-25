@@ -1,0 +1,177 @@
+// Prisma schema — мультисайтовый лендинг-конструктор с квизом и админкой.
+// Две площадки (Уникод, Уникум) живут в одной БД и различаются по slug.
+
+generator client {
+  provider = "prisma-client-js"
+  // native — для локальной разработки; rhel-openssl-3.0.x — движок для
+  // серверлес-функций Netlify (AWS Lambda / Amazon Linux). Без этого
+  // Prisma на Netlify падает с "query engine binary not found".
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Площадка (одна посадочная страница = один Site). Хранит тему и SEO.
+model Site {
+  id        String   @id @default(cuid())
+  slug      String   @unique // "unikod" | "unicum"
+  name      String
+  domain    String? // основной домен площадки (для canonical / OG)
+  isDefault Boolean  @default(false)
+
+  // --- Тема (data-driven, правится в админке) ---
+  accentColor String @default("#458c8e")
+  accentDark  String @default("#397374")
+  navyColor   String @default("#175844")
+  navyDark    String @default("#243f2c")
+  ctaColor    String @default("#24272a")
+  ctaHover    String @default("#175844")
+
+  logoUrl     String?
+  faviconUrl  String?
+
+  contents     Content[]
+  quizSteps    QuizStep[]
+  integrations Integration[]
+  settings     Settings?
+  leads        Lead[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Ключ-значение для контента страницы. value может быть строкой или JSON.
+/// Примеры key: hero.title, hero.subtitle, hero.badge, hero.features,
+/// hero.stats, hero.bonuses, seo.title, seo.description, seo.ogImage.
+model Content {
+  id     String      @id @default(cuid())
+  siteId String
+  site   Site        @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  key    String
+  value  String      @db.Text // строка или сериализованный JSON
+  type   ContentType @default(TEXT)
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([siteId, key])
+  @@index([siteId])
+}
+
+enum ContentType {
+  TEXT
+  RICHTEXT
+  IMAGE
+  JSON
+}
+
+/// Шаг квиза. Порядок задаётся полем order. kind определяет вид вариантов.
+model QuizStep {
+  id       String       @id @default(cuid())
+  siteId   String
+  site     Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  order    Int
+  question String
+  kind     QuizStepKind @default(LIST)
+  gain     String       @default("1%") // «выгода», накапливаемая на шаге
+  options  QuizOption[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([siteId])
+}
+
+enum QuizStepKind {
+  CARDS // карточки с планировками (шаг «комнаты»)
+  ICONS // иконка + подпись (шаг «акции»)
+  LIST  // текстовые плитки (шаг «сроки»)
+  FORM  // финальный шаг с полями
+}
+
+/// Вариант ответа внутри шага.
+model QuizOption {
+  id       String   @id @default(cuid())
+  stepId   String
+  step     QuizStep @relation(fields: [stepId], references: [id], onDelete: Cascade)
+  order    Int
+  label    String
+  value    String
+  imageUrl String?
+
+  @@index([stepId])
+}
+
+/// Внешняя интеграция (Яндекс.Метрика, Вебмастер, Битрикс24, AMO и т.д.).
+model Integration {
+  id       String          @id @default(cuid())
+  siteId   String
+  site     Site            @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  type     IntegrationType
+  enabled  Boolean         @default(false)
+  config   Json            @default("{}") // { counterId } | { verification } | { webhookUrl } | { apiUrl, apiKey }
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([siteId, type])
+  @@index([siteId])
+}
+
+enum IntegrationType {
+  YANDEX_METRIKA
+  YANDEX_WEBMASTER
+  BITRIX24
+  AMOCRM
+  GOOGLE_ANALYTICS
+}
+
+/// Общие настройки площадки (контакты, режим работы, соцсети, мета).
+model Settings {
+  id      String @id @default(cuid())
+  siteId  String @unique
+  site    Site   @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  phone        String @default("")
+  phoneHref    String @default("")
+  email        String @default("")
+  address      String @default("")
+  workingHours Json   @default("[]") // [{ label, value }]
+  socials      Json   @default("[]") // [{ type, url }]
+
+  metaTitle       String @default("")
+  metaDescription String @default("")
+  ogImage         String @default("")
+
+  updatedAt DateTime @updatedAt
+}
+
+/// Пользователь админки.
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String   @default("Администратор")
+  role         Role     @default(ADMIN)
+  createdAt    DateTime @default(now())
+}
+
+enum Role {
+  ADMIN
+  EDITOR
+}
+
+/// Заявка, отправленная из квиза (сохраняется + уходит в CRM-интеграции).
+model Lead {
+  id       String   @id @default(cuid())
+  siteId   String
+  site     Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  name     String
+  phone    String
+  answers  Json     @default("{}")
+  source   String   @default("quiz")
+  createdAt DateTime @default(now())
+
+  @@index([siteId])
+}

@@ -1,0 +1,26 @@
+npm WARN EBADENGINE Unsupported engine {
+npm WARN EBADENGINE   package: 'eslint-visitor-keys@5.0.1',
+npm WARN EBADENGINE   required: { node: '^20.19.0 || ^22.13.0 || >=24' },
+npm WARN EBADENGINE   current: { node: 'v20.11.0', npm: '10.2.4' }
+npm WARN EBADENGINE }
+npm WARN EBADENGINE Unsupported engine {
+npm WARN EBADENGINE   package: 'eslint-visitor-keys@5.0.1',
+npm WARN EBADENGINE   required: { node: '^20.19.0 || ^22.13.0 || >=24' },
+npm WARN EBADENGINE   current: { node: 'v20.11.0', npm: '10.2.4' }
+npm WARN EBADENGINE }
+npm WARN deprecated glob@10.3.10: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+npm WARN deprecated eslint@8.57.1: This version is no longer supported. Please see https://eslint.org/version-support for other options.
+npm WARN deprecated next@14.2.18: This version has a security vulnerability. Please upgrade to a patched version. See https://nextjs.org/blog/security-update-2025-12-11 for more details.
+npm WARN cleanup Failed to remove some directories [
+npm WARN cleanup   [
+npm WARN cleanup     'C:\\Users\\1\\claude\\kvartiry-nextjs\\node_modules\\.resolve-bXZBgjL8',
+npm WARN cleanup     [Error: EBUSY: resource busy or locked, rmdir 'C:\Users\1\claude\kvartiry-nextjs\node_modules\.resolve-bXZBgjL8'] {
+npm WARN cleanup       errno: -4082,
+npm WARN cleanup       code: 'EBUSY',
+npm WARN cleanup       syscall: 'rmdir',
+npm WARN cleanup       path: 'C:\\Users\\1\\claude\\kvartiry-nextjs\\node_modules\\.resolve-bXZBgjL8'
+npm WARN cleanup     }
+npm WARN cleanup   ]
+npm WARN cleanup ]
+
+added 34 packages, removed 98 packages, and changed 60 packages in 2m
