@@ -8,7 +8,7 @@ export function Footer({ data }: { data: LandingData }) {
   return (
     <footer className="bg-white py-14">
       <div className="container-x">
-        <div className="flex flex-col items-start justify-between gap-10 lg:flex-row lg:gap-12">
+        <div className="flex flex-col items-start justify-between gap-10 xl:flex-row xl:gap-12">
           {/* левая группа: лого — офис — лого застройщика */}
           <div className="flex flex-col items-start gap-8 md:flex-row md:gap-10">
             {data.logoUrl && (
@@ -40,7 +40,7 @@ export function Footer({ data }: { data: LandingData }) {
           </div>
 
           {/* правовые ссылки */}
-          <div className="flex flex-shrink-0 flex-col gap-4 text-xl font-medium leading-snug lg:max-w-[26rem]">
+          <div className="flex flex-shrink-0 flex-col gap-4 text-xl font-medium leading-snug xl:max-w-[26rem]">
             <a href="#" className="transition-colors hover:text-[color:var(--accent-dark)]" style={{ color: 'var(--accent)' }}>
               Подробности акций и условия кредитования
             </a>
