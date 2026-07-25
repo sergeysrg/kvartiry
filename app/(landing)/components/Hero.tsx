@@ -74,12 +74,12 @@ export function Hero({ data }: { data: LandingData }) {
             ))}
           </ul>
 
-          <div className="mt-6 grid max-w-md grid-cols-2 gap-6">
+          <div className="mt-6 flex flex-wrap gap-x-10 gap-y-4 sm:gap-x-16">
             {content.stats.map((s) => (
               <div key={s.label}>
-                <p className="text-lg text-muted md:text-2xl lg:text-[28px]">{s.label}</p>
+                <p className="whitespace-nowrap text-lg text-muted md:text-2xl lg:text-[28px]">{s.label}</p>
                 <p
-                  className="mt-0.5 text-lg font-bold md:text-2xl lg:text-[28px]"
+                  className="mt-0.5 whitespace-nowrap text-lg font-bold md:text-2xl lg:text-[28px]"
                   style={{ color: 'var(--accent)' }}
                 >
                   {s.value}
