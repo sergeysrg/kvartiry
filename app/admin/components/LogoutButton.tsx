@@ -10,7 +10,10 @@ export function LogoutButton() {
     router.refresh();
   };
   return (
-    <button onClick={logout} className="rounded-lg border border-slate-300 px-3 py-1.5 font-medium transition hover:bg-slate-100">
+    <button
+      onClick={logout}
+      className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 font-medium text-zinc-700 transition hover:bg-zinc-100"
+    >
       Выйти
     </button>
   );

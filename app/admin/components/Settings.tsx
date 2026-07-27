@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { SaveBar } from './ContentEditor';
+import { SectionCard, TextInput, TextArea, ImageInput, PairList, SaveBar, Skeleton, useSaveState } from './ui';
 
 type SettingsData = {
   phone: string;
@@ -23,7 +23,7 @@ const EMPTY: SettingsData = {
 export function Settings({ slug }: { slug: string }) {
   const [data, setData] = useState<SettingsData>(EMPTY);
   const [loading, setLoading] = useState(true);
-  const [status, setStatus] = useState<string | null>(null);
+  const { status, setStatus } = useSaveState();
 
   useEffect(() => {
     setLoading(true);
@@ -36,87 +36,43 @@ export function Settings({ slug }: { slug: string }) {
   const set = <K extends keyof SettingsData>(k: K, v: SettingsData[K]) => setData((p) => ({ ...p, [k]: v }));
 
   const save = async () => {
-    setStatus('Сохраняем…');
+    setStatus('saving');
     const res = await fetch('/api/settings', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ siteSlug: slug, ...data }),
     });
-    setStatus(res.ok ? 'Сохранено ✓' : 'Ошибка сохранения');
-    setTimeout(() => setStatus(null), 2500);
+    setStatus(res.ok ? 'saved' : 'error');
   };
 
-  if (loading) return <p className="text-slate-500">Загрузка…</p>;
-
-  const field = (label: string, key: keyof SettingsData, placeholder = '') => (
-    <label className="grid gap-1 text-sm">
-      <span className="text-slate-600">{label}</span>
-      <input
-        value={String(data[key] ?? '')}
-        onChange={(e) => set(key, e.target.value as never)}
-        placeholder={placeholder}
-        className="rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-slate-900"
-      />
-    </label>
-  );
+  if (loading) return <Skeleton />;
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold">Настройки площадки</h2>
-        <SaveBar status={status} onSave={save} />
-      </div>
+    <div className="grid gap-6 pb-4">
+      <SectionCard title="Контакты" description="Телефон, почта и адрес офиса продаж.">
+        <div className="grid gap-5 sm:grid-cols-2">
+          <TextInput label="Телефон" value={data.phone} onChange={(v) => set('phone', v)} placeholder="+7 843 000-00-00" />
+          <TextInput label="Телефон (ссылка tel:)" value={data.phoneHref} onChange={(v) => set('phoneHref', v)} placeholder="tel:+78430000000" />
+          <TextInput label="Email" value={data.email} onChange={(v) => set('email', v)} placeholder="sale@example.com" />
+          <TextInput label="Адрес" value={data.address} onChange={(v) => set('address', v)} placeholder="г. Казань, ул. …" />
+        </div>
+      </SectionCard>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        {field('Телефон', 'phone', '+7 843 000-00-00')}
-        {field('Телефон (href)', 'phoneHref', 'tel:+78430000000')}
-        {field('Email', 'email', 'sale@example.com')}
-        {field('Адрес', 'address', 'г. Казань, ул. …')}
-        {field('OG-изображение (URL)', 'ogImage')}
-        {field('Meta title', 'metaTitle')}
-      </div>
-
-      <label className="grid gap-1 text-sm">
-        <span className="text-slate-600">Meta description</span>
-        <textarea
-          value={data.metaDescription}
-          onChange={(e) => set('metaDescription', e.target.value)}
-          rows={3}
-          className="rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-slate-900"
+      <SectionCard title="Режим работы" description="Строки вида «ПН-ПТ» — «09:00 — 20:00».">
+        <PairList
+          items={data.workingHours}
+          onChange={(v) => set('workingHours', v as { label: string; value: string }[])}
+          phA="ПН-ПТ"
+          phB="09:00 — 20:00"
+          addLabel="Добавить строку"
         />
-      </label>
+      </SectionCard>
 
-      <div className="grid gap-3">
-        <span className="text-sm font-medium text-slate-600">Режим работы</span>
-        {data.workingHours.map((h, i) => (
-          <div key={i} className="flex gap-2">
-            <input
-              value={h.label}
-              onChange={(e) => set('workingHours', data.workingHours.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))}
-              className="w-32 rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              placeholder="ПН-ПТ"
-            />
-            <input
-              value={h.value}
-              onChange={(e) => set('workingHours', data.workingHours.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)))}
-              className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              placeholder="09:00 — 20:00"
-            />
-            <button
-              onClick={() => set('workingHours', data.workingHours.filter((_, j) => j !== i))}
-              className="rounded-lg border border-slate-300 px-2 text-slate-500 hover:bg-slate-100"
-            >
-              ✕
-            </button>
-          </div>
-        ))}
-        <button
-          onClick={() => set('workingHours', [...data.workingHours, { label: '', value: '' }])}
-          className="justify-self-start rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium hover:bg-slate-100"
-        >
-          + Добавить строку
-        </button>
-      </div>
+      <SectionCard title="SEO и мета" description="Заголовок, описание и картинка для соцсетей.">
+        <TextInput label="Meta title" value={data.metaTitle} onChange={(v) => set('metaTitle', v)} />
+        <TextArea label="Meta description" value={data.metaDescription} onChange={(v) => set('metaDescription', v)} rows={3} />
+        <ImageInput label="OG-изображение (для соцсетей)" value={data.ogImage} onChange={(v) => set('ogImage', v)} />
+      </SectionCard>
 
       <SaveBar status={status} onSave={save} />
     </div>

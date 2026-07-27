@@ -1,100 +1,182 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  SectionCard,
+  TextInput,
+  TextArea,
+  ImageInput,
+  ImageList,
+  StringList,
+  PairList,
+  Label,
+  AddButton,
+  SaveBar,
+  Skeleton,
+  useSaveState,
+} from './ui';
 
-type Row = { key: string; value: string; type: string };
+type FieldType = 'text' | 'textarea' | 'image' | 'list' | 'list-multiline' | 'stats' | 'bonuses' | 'images';
+type Field = { key: string; label: string; type: FieldType; hint?: string };
+type Section = { title: string; description?: string; fields: Field[] };
 
-const LABELS: Record<string, string> = {
-  'hero.badge': 'Бейдж (метраж)',
-  'hero.title': 'Заголовок',
-  'hero.subtitle': 'Подзаголовок',
-  'hero.features': 'Преимущества (JSON-массив строк)',
-  'hero.stats': 'Статистика (JSON: [{label,value}])',
-  'hero.bonuses': 'Бонусы (JSON: [{title,image,lock}])',
-  'hero.images': 'Изображения слайдера (JSON-массив URL)',
-  'consultant.name': 'Консультант — имя',
-  'consultant.role': 'Консультант — должность',
-  'consultant.photo': 'Консультант — фото (URL)',
-  'consultant.quotes': 'Реплики консультанта (JSON-массив)',
-  'footer.developer': 'Застройщик',
-  'footer.phonePrefix': 'Префикс телефона в футере (напр. «Тел: »)',
-  'footer.legal': 'Реквизиты (JSON-массив строк)',
-  'footer.devLogo': 'Логотип застройщика (URL)',
-};
+const SECTIONS: Section[] = [
+  {
+    title: 'Герой',
+    description: 'Первый экран: заголовок, преимущества, статистика, бонусы и слайдер.',
+    fields: [
+      { key: 'hero.badge', label: 'Бейдж (метраж)', type: 'text' },
+      { key: 'hero.title', label: 'Заголовок', type: 'textarea' },
+      { key: 'hero.subtitle', label: 'Подзаголовок', type: 'text' },
+      { key: 'hero.features', label: 'Преимущества', type: 'list' },
+      { key: 'hero.stats', label: 'Статистика', type: 'stats' },
+      { key: 'hero.bonuses', label: 'Бонусы после теста', type: 'bonuses' },
+      { key: 'hero.images', label: 'Изображения слайдера', type: 'images' },
+    ],
+  },
+  {
+    title: 'Консультант',
+    description: 'Карточка менеджера в боковой панели квиза.',
+    fields: [
+      { key: 'consultant.name', label: 'Имя', type: 'text' },
+      { key: 'consultant.role', label: 'Должность', type: 'text' },
+      { key: 'consultant.photo', label: 'Фото', type: 'image' },
+      { key: 'consultant.quotes', label: 'Реплики (по шагам квиза)', type: 'list-multiline' },
+    ],
+  },
+  {
+    title: 'Подвал',
+    description: 'Реквизиты и застройщик.',
+    fields: [
+      { key: 'footer.developer', label: 'Застройщик', type: 'textarea' },
+      { key: 'footer.phonePrefix', label: 'Префикс телефона в футере', type: 'text', hint: 'напр. «Тел: » или пусто' },
+      { key: 'footer.legal', label: 'Реквизиты', type: 'list' },
+      { key: 'footer.devLogo', label: 'Логотип застройщика', type: 'image' },
+    ],
+  },
+];
 
-const isImage = (k: string) => /photo|image|logo/i.test(k);
+const ALL_FIELDS = SECTIONS.flatMap((s) => s.fields);
+const isText = (t: FieldType) => t === 'text' || t === 'textarea' || t === 'image';
+
+function parseValue(type: FieldType, raw: string | undefined): unknown {
+  if (isText(type)) return raw ?? '';
+  try {
+    return JSON.parse(raw ?? '');
+  } catch {
+    return [];
+  }
+}
+function serialize(type: FieldType, val: unknown): string {
+  return isText(type) ? String(val ?? '') : JSON.stringify(val ?? []);
+}
+
+type Bonus = { title: string; image: string; lock?: string };
 
 export function ContentEditor({ slug }: { slug: string }) {
-  const [rows, setRows] = useState<Row[]>([]);
+  const [values, setValues] = useState<Record<string, unknown>>({});
+  const [extra, setExtra] = useState<{ key: string; value: string }[]>([]);
   const [loading, setLoading] = useState(true);
-  const [status, setStatus] = useState<string | null>(null);
+  const { status, setStatus } = useSaveState();
 
   useEffect(() => {
     setLoading(true);
     fetch(`/api/content?site=${slug}`)
       .then((r) => r.json())
-      .then((d) => setRows(d.contents ?? []))
+      .then((d) => {
+        const rows: { key: string; value: string }[] = d.contents ?? [];
+        const byKey = new Map(rows.map((r) => [r.key, r.value]));
+        const v: Record<string, unknown> = {};
+        for (const f of ALL_FIELDS) v[f.key] = parseValue(f.type, byKey.get(f.key));
+        setValues(v);
+        setExtra(rows.filter((r) => !ALL_FIELDS.some((f) => f.key === r.key)));
+      })
       .finally(() => setLoading(false));
   }, [slug]);
 
-  const update = (key: string, value: string) =>
-    setRows((prev) => prev.map((r) => (r.key === key ? { ...r, value } : r)));
+  const set = (key: string, val: unknown) => setValues((p) => ({ ...p, [key]: val }));
 
   const save = async () => {
-    setStatus('Сохраняем…');
+    setStatus('saving');
+    const items = [
+      ...ALL_FIELDS.map((f) => ({ key: f.key, value: serialize(f.type, values[f.key]) })),
+      ...extra,
+    ];
     const res = await fetch('/api/content', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ siteSlug: slug, items: rows.map(({ key, value }) => ({ key, value })) }),
+      body: JSON.stringify({ siteSlug: slug, items }),
     });
-    setStatus(res.ok ? 'Сохранено ✓' : 'Ошибка сохранения');
-    setTimeout(() => setStatus(null), 2500);
+    setStatus(res.ok ? 'saved' : 'error');
   };
 
-  if (loading) return <p className="text-slate-500">Загрузка…</p>;
+  if (loading) return <Skeleton />;
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold">Редактор контента</h2>
-        <SaveBar status={status} onSave={save} />
-      </div>
-
-      <div className="grid gap-5">
-        {rows.map((r) => {
-          const isJson = r.value.trim().startsWith('[') || r.value.trim().startsWith('{');
-          return (
-            <div key={r.key} className="grid gap-1.5">
-              <label className="text-sm font-medium text-slate-700">{LABELS[r.key] ?? r.key}</label>
-              <div className="flex gap-3">
-                <textarea
-                  value={r.value}
-                  onChange={(e) => update(r.key, e.target.value)}
-                  rows={isJson ? 4 : 2}
-                  className="w-full resize-y rounded-lg border border-slate-300 px-3 py-2 font-mono text-sm outline-none focus:border-slate-900"
-                />
-                {isImage(r.key) && r.value.startsWith('http') && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={r.value} alt="" className="h-16 w-16 flex-none rounded-lg border border-slate-200 object-contain" />
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
+    <div className="grid gap-6 pb-4">
+      {SECTIONS.map((section) => (
+        <SectionCard key={section.title} title={section.title} description={section.description}>
+          {section.fields.map((f) => (
+            <FieldEditor key={f.key} field={f} value={values[f.key]} onChange={(v) => set(f.key, v)} />
+          ))}
+        </SectionCard>
+      ))}
       <SaveBar status={status} onSave={save} />
     </div>
   );
 }
 
-export function SaveBar({ status, onSave }: { status: string | null; onSave: () => void }) {
+function FieldEditor({ field, value, onChange }: { field: Field; value: unknown; onChange: (v: unknown) => void }) {
+  switch (field.type) {
+    case 'text':
+      return <TextInput label={field.label} hint={field.hint} value={(value as string) ?? ''} onChange={onChange} />;
+    case 'textarea':
+      return <TextArea label={field.label} hint={field.hint} value={(value as string) ?? ''} onChange={onChange} rows={2} />;
+    case 'image':
+      return <ImageInput label={field.label} value={(value as string) ?? ''} onChange={onChange} />;
+    case 'list':
+      return <StringList label={field.label} hint={field.hint} items={(value as string[]) ?? []} onChange={onChange} addLabel="Добавить пункт" />;
+    case 'list-multiline':
+      return <StringList label={field.label} items={(value as string[]) ?? []} onChange={onChange} multiline addLabel="Добавить реплику" />;
+    case 'stats':
+      return <PairList label={field.label} items={(value as Record<string, string>[]) ?? []} onChange={onChange} phA="Подпись (напр. Сдача)" phB="Значение (напр. 2027 г.)" addLabel="Добавить показатель" />;
+    case 'images':
+      return <ImageList label={field.label} items={(value as string[]) ?? []} onChange={onChange} />;
+    case 'bonuses':
+      return <BonusesEditor label={field.label} items={(value as Bonus[]) ?? []} onChange={onChange} />;
+    default:
+      return null;
+  }
+}
+
+/* ---------- Редактор бонусов (карточки) ---------- */
+function BonusesEditor({ label, items, onChange }: { label: string; items: Bonus[]; onChange: (v: Bonus[]) => void }) {
+  const set = (i: number, patch: Partial<Bonus>) => onChange(items.map((x, j) => (j === i ? { ...x, ...patch } : x)));
+  const remove = (i: number) => onChange(items.filter((_, j) => j !== i));
+  const add = () => onChange([...items, { title: '', image: '', lock: '' }]);
   return (
-    <div className="flex items-center gap-3">
-      {status && <span className="text-sm text-slate-500">{status}</span>}
-      <button onClick={onSave} className="rounded-lg bg-slate-900 px-5 py-2 text-sm font-semibold text-white hover:bg-slate-700">
-        Сохранить
-      </button>
+    <div className="grid gap-3">
+      <Label hint="карточки под кнопкой">{label}</Label>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {items.map((b, i) => (
+          <div key={i} className="relative rounded-xl border border-zinc-200 bg-zinc-50/50 p-4">
+            <button
+              type="button"
+              onClick={() => remove(i)}
+              title="Удалить"
+              className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-md text-zinc-400 transition hover:bg-white hover:text-zinc-700"
+            >
+              ✕
+            </button>
+            <div className="grid gap-3">
+              <TextArea label="Текст" value={b.title} onChange={(v) => set(i, { title: v })} rows={2} placeholder="Подборка бесплатно" />
+              <ImageInput label="Картинка" value={b.image} onChange={(v) => set(i, { image: v })} />
+              <ImageInput label="Иконка замка" value={b.lock ?? ''} onChange={(v) => set(i, { lock: v })} />
+            </div>
+          </div>
+        ))}
+      </div>
+      <AddButton onClick={add}>Добавить бонус</AddButton>
     </div>
   );
 }
