@@ -15,6 +15,17 @@
 
 **Доступ в админку (демо):** `admin@example.com` / `admin12345`
 
+## Развёрнуто
+- **Публичное демо (Netlify + Neon PostgreSQL):** https://kvartiry.netlify.app —
+  открывается сразу, обе площадки + админка. Автодеплой из GitHub.
+- **Staging-сервер (деплой по SSH, как в ТЗ):** приложение развёрнуто в
+  `/home/test/app`, зависимости + `prisma db push` + seed в отдельную БД
+  `kvartiry_staging`, запущено через **PM2** на `127.0.0.1:3020`. Обратный
+  прокси **Caddy** проксирует домен `test.1development.online → :3020`.
+  Проверено на сервере: `/unicum`, `/unikod` → 200, `/admin` → защита,
+  логин админки работает. Публичный домен откроется с авто-HTTPS после
+  добавления DNS-записи `A → <IP сервера>` (управляется на стороне заказчика).
+
 ## Технологии
 Next.js 14 (App Router) · TypeScript · Tailwind CSS · Framer Motion ·
 React Hook Form + Zod · Prisma · PostgreSQL. Аутентификация админки — JWT в
