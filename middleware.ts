@@ -9,11 +9,11 @@ export async function middleware(req: NextRequest) {
   const token = req.cookies.get(SESSION_COOKIE)?.value;
   const session = await verifySession(token);
   if (!session) {
-    // Относительный Location — браузер подставит текущий домен сам. Это надёжно
-    // за обратным прокси (Caddy), где абсолютный URL из req.nextUrl уводит на
-    // внутренний localhost:3020.
-    const location = `/admin/login?from=${encodeURIComponent(pathname)}`;
-    return new NextResponse(null, { status: 307, headers: { Location: location } });
+    // База — публичный домен из NEXT_PUBLIC_SITE_URL. За обратным прокси (Caddy)
+    // req.nextUrl.origin = внутренний localhost:3020, поэтому используем его.
+    const base = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') || req.nextUrl.origin;
+    const url = new URL(`/admin/login?from=${encodeURIComponent(pathname)}`, base);
+    return NextResponse.redirect(url);
   }
   return NextResponse.next();
 }
